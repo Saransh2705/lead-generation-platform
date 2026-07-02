@@ -1,0 +1,8 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui; background: #111827; color: white; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+th, td { padding: 0.75rem; border-bottom: 1px solid #444; }
+th { background: #1f2937; }
+button { padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; cursor: pointer; }
+button:hover { background: #2563eb; }
+.card { background: #111827; border: 1px solid #374151; padding: 1.5rem; margin: 1rem 0; }
