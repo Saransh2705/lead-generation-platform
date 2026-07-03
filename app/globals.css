@@ -53,3 +53,15 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 8px 16px rgba(59,130,246,0.08);
   border-color: #bfdbfe;
 }
+.nav-link {
+  color: #1f2937;
+  text-decoration: none;
+  font-weight: 500;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.nav-link:hover {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}

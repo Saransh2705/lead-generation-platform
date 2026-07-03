@@ -24,10 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               Lead Gen Platform
             </h1>
             <div style={{ display: 'flex', gap: '2rem' }}>
-              <a href="/" style={{ color: '#1f2937', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s', borderBottom: '2px solid transparent' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1f2937'}>Dashboard</a>
-              <a href="/leads" style={{ color: '#1f2937', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s', borderBottom: '2px solid transparent' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1f2937'}>Leads</a>
-              <a href="/requests" style={{ color: '#1f2937', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s', borderBottom: '2px solid transparent' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1f2937'}>Requests</a>
-              <a href="/payments" style={{ color: '#1f2937', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s', borderBottom: '2px solid transparent' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1f2937'}>Payments</a>
+              <a href="/" className="nav-link">Dashboard</a>
+              <a href="/leads" className="nav-link">Leads</a>
+              <a href="/requests" className="nav-link">Requests</a>
+              <a href="/payments" className="nav-link">Payments</a>
             </div>
           </div>
         </nav>
