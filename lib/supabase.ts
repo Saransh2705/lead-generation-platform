@@ -7,8 +7,9 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 // Client for browser (anon key)
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Server client (service role key)
-export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+// Server-side client. Prefer the service-role key (bypasses RLS); if it isn't a
+// valid key, fall back to the anon key, which works via the anon RLS policies.
+export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey || supabaseKey);
 
 export type Lead = {
   id: number;
