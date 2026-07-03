@@ -3,16 +3,16 @@ import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
-const INTERVALS: { m: number; label: string }[] = [
-  { m: 30, label: 'Every 30 min' },
-  { m: 60, label: 'Every hour' },
-  { m: 180, label: 'Every 3 hours' },
-  { m: 360, label: 'Every 6 hours' },
-  { m: 720, label: 'Every 12 hours' },
-  { m: 1440, label: 'Daily' },
-  { m: 10080, label: 'Weekly' },
-];
-function intervalLabel(m: number) { return INTERVALS.find((i) => i.m === m)?.label || `Every ${m} min`; }
+// Quick-pick suggestions for the "every N minutes" input (any value ≥1 is allowed).
+const SUGGESTIONS = [1, 5, 15, 30, 60, 180, 360, 720, 1440, 10080];
+function intervalLabel(m: number) {
+  if (m < 60) return `Every ${m} min`;
+  if (m === 1440) return 'Daily';
+  if (m === 10080) return 'Weekly';
+  if (m % 1440 === 0) return `Every ${m / 1440} days`;
+  if (m % 60 === 0) return `Every ${m / 60} ${m === 60 ? 'hour' : 'hours'}`;
+  return `Every ${Math.floor(m / 60)}h ${m % 60}m`;
+}
 function fmt(iso: string | null) {
   if (!iso) return '—';
   return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -30,7 +30,7 @@ function whenNext(iso: string | null) {
 async function createSchedule(formData: FormData) {
   'use server';
   const category_key = String(formData.get('category_key') || '');
-  const interval_minutes = parseInt(String(formData.get('interval_minutes') || '360')) || 360;
+  const interval_minutes = Math.max(1, parseInt(String(formData.get('interval_minutes') || '60')) || 60);
   const lead_count = Math.max(1, Math.min(50, parseInt(String(formData.get('lead_count') || '12')) || 12));
   if (!category_key) return;
   await supabaseAdmin.from('schedules').insert({
@@ -70,7 +70,7 @@ export default async function SchedulesPage() {
       <div className="content">
         <div className="card" style={{ marginBottom: 22 }}>
           <div className="card-title">New Schedule</div>
-          <div className="card-sub">Pick a category and how often it should run. Executed by GitHub Actions (~15-min resolution).</div>
+          <div className="card-sub">Pick a category and how often it should run. Executed by Supabase (pg_cron) every minute — so schedules can run as often as <strong>every 1 minute</strong>, fully unattended.</div>
           <form action={createSchedule}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: 14, marginBottom: 16 }}>
               <div>
@@ -81,10 +81,12 @@ export default async function SchedulesPage() {
                 </select>
               </div>
               <div>
-                <label className="field-label">Interval</label>
-                <select name="interval_minutes" style={{ width: '100%' }} defaultValue="360">
-                  {INTERVALS.map((i) => <option key={i.m} value={i.m}>{i.label}</option>)}
-                </select>
+                <label className="field-label">Run every … minutes</label>
+                <input name="interval_minutes" type="number" min="1" step="1" defaultValue="60" required list="interval-suggestions" style={{ width: '100%' }} />
+                <datalist id="interval-suggestions">
+                  {SUGGESTIONS.map((m) => <option key={m} value={m}>{intervalLabel(m)}</option>)}
+                </datalist>
+                <div style={{ fontSize: 11.5, color: 'var(--muted-soft)', marginTop: 4 }}>Any value ≥ 1. e.g. 1, 5, 15, 30, 60, 360, 1440 (daily)</div>
               </div>
               <div>
                 <label className="field-label">Leads per run</label>

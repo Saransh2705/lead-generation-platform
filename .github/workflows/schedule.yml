@@ -1,9 +1,11 @@
-name: Run due lead-gen schedules
+name: Run due lead-gen schedules (fallback)
 
+# The primary scheduler is now a Supabase Edge Function invoked every minute by
+# pg_cron (see supabase/functions/run-schedules + the lead-gen-run-schedules cron
+# job). This workflow is kept as a manual fallback only — the `schedule:` trigger
+# is intentionally removed so it can't double-run alongside pg_cron.
 on:
-  schedule:
-    - cron: '*/15 * * * *'   # every 15 minutes (GitHub's finest reliable resolution)
-  workflow_dispatch: {}       # allow manual "Run now" from the Actions tab / API
+  workflow_dispatch: {}       # manual fallback run from the Actions tab / API
 
 concurrency:
   group: run-schedules
