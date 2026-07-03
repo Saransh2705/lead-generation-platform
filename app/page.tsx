@@ -23,15 +23,17 @@ export default async function Dashboard() {
 
   return (
     <div>
-      <h1 style={{fontSize: '2.25rem', fontWeight: 'bold', marginBottom: '1.5rem'}}>Dashboard</h1>
-      <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '2rem'}}>
+      <h1 style={{fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '2rem', color: '#1f2937'}}>Dashboard</h1>
+      <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem'}}>
         <div className="card">
-          <h3 style={{fontSize: '0.875rem', color: '#9ca3af'}}>Total Revenue</h3>
-          <p style={{fontSize: '1.875rem', fontWeight: 'bold'}}>${totalRevenue.toFixed(2)}</p>
+          <h3 style={{fontSize: '0.875rem', color: '#6b7280', fontWeight: 500, marginBottom: '0.5rem'}}>Total Revenue</h3>
+          <p style={{fontSize: '2.5rem', fontWeight: 'bold', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', margin: 0}}>
+            ${totalRevenue.toFixed(2)}
+          </p>
         </div>
         <div className="card">
-          <h3 style={{fontSize: '0.875rem', color: '#9ca3af'}}>Pending Buyer Requests</h3>
-          <p style={{fontSize: '1.875rem', fontWeight: 'bold'}}>{pendingCount}</p>
+          <h3 style={{fontSize: '0.875rem', color: '#6b7280', fontWeight: 500, marginBottom: '0.5rem'}}>Pending Buyer Requests</h3>
+          <p style={{fontSize: '2.5rem', fontWeight: 'bold', color: '#3b82f6', margin: 0}}>{pendingCount}</p>
         </div>
       </div>
     </div>
