@@ -1,72 +1,87 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
-import {
-  CATEGORY_META,
-  LeadCategory,
-  generateLeads,
-  buildRunLog,
-} from '@/lib/leadGenerator';
+import { generateLeads, buildRunLog, resolveMeta } from '@/lib/leadGenerator';
+import { writeBriefs } from '@/lib/brief';
 
 export const dynamic = 'force-dynamic';
 
-function label(v: string) {
-  return v.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
+function label(v: string) { return v.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()); }
 function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (m < 1) return 'just now';
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
   return h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
 }
+function slugify(s: string) { return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); }
 
 async function runGeneration(formData: FormData) {
   'use server';
-  const category = String(formData.get('category') || '') as LeadCategory;
-  if (!CATEGORY_META[category]) return;
+  const key = String(formData.get('category') || '');
+  const { data: cat } = await supabaseAdmin.from('categories').select('*').eq('key', key).single();
+  if (!cat) return;
 
   const started = Date.now();
-  const meta = CATEGORY_META[category];
+  const meta = resolveMeta(cat);
   const source = meta.sources[Math.floor(Math.random() * meta.sources.length)];
-  const count = 8 + Math.floor(Math.random() * 13); // 8–20 leads
+  const count = 8 + Math.floor(Math.random() * 13);
   const skipped = 1 + Math.floor(Math.random() * 4);
 
   try {
-    const leads = generateLeads(category, count);
+    const leads = generateLeads({ key: cat.key, label: cat.label, icon: cat.icon }, count);
+    // Manual path: keep it snappy — best-effort AI within a ~6s budget, else template.
+    const aiCount = await writeBriefs(leads, { key: cat.key, label: cat.label }, { budgetMs: 6000, perCallMs: 4000 });
     const { error } = await supabaseAdmin.from('leads').insert(leads);
     if (error) throw error;
 
-    const ms = Math.max(Date.now() - started, 600 + Math.floor(Math.random() * 1800));
-    const log = buildRunLog(category, source, count + skipped, count, ms);
+    const ms = Math.max(Date.now() - started, 700);
+    const log = buildRunLog({ key: cat.key, label: cat.label }, source, count + skipped, count, aiCount, ms);
     await supabaseAdmin.from('generation_runs').insert({
-      category, status: 'completed', leads_generated: count, source,
-      duration_ms: ms, log, finished_at: new Date().toISOString(),
+      category: cat.key, status: 'completed', leads_generated: count, source,
+      duration_ms: ms, trigger: 'manual', log, finished_at: new Date().toISOString(),
     });
   } catch (e: any) {
     await supabaseAdmin.from('generation_runs').insert({
-      category, status: 'failed', leads_generated: 0, source,
+      category: cat.key, status: 'failed', leads_generated: 0, source, trigger: 'manual',
       duration_ms: Date.now() - started,
       log: [{ ts: new Date().toISOString(), level: 'warn', message: `Run failed: ${e?.message || 'unknown error'}` }],
       finished_at: new Date().toISOString(),
     });
   }
 
-  revalidatePath('/generate');
-  revalidatePath('/logs');
-  revalidatePath('/leads');
-  revalidatePath('/');
+  revalidatePath('/generate'); revalidatePath('/logs'); revalidatePath('/leads'); revalidatePath('/');
+}
+
+async function createCategory(formData: FormData) {
+  'use server';
+  const labelRaw = String(formData.get('label') || '').trim();
+  if (!labelRaw) return;
+  const icon = String(formData.get('icon') || '').trim() || '📋';
+  const description = String(formData.get('description') || '').trim() || null;
+  let base = slugify(labelRaw) || 'category';
+  // Ensure unique key.
+  const { data: existing } = await supabaseAdmin.from('categories').select('key').ilike('key', `${base}%`);
+  const taken = new Set((existing || []).map((r: any) => r.key));
+  let key = base; let n = 2;
+  while (taken.has(key)) key = `${base}_${n++}`;
+  await supabaseAdmin.from('categories').insert({ key, label: labelRaw, icon, description, is_builtin: false });
+  revalidatePath('/generate'); revalidatePath('/schedules');
+}
+
+async function deleteCategory(formData: FormData) {
+  'use server';
+  const key = String(formData.get('key') || '');
+  await supabaseAdmin.from('categories').delete().eq('key', key).eq('is_builtin', false);
+  revalidatePath('/generate'); revalidatePath('/schedules');
 }
 
 export default async function GeneratePage() {
+  const { data: categories } = await supabaseAdmin.from('categories').select('*').order('is_builtin', { ascending: false }).order('id');
+  const cats = categories || [];
   let runs: any[] = [];
-  try {
-    runs = (await supabaseAdmin.from('generation_runs').select('*').order('created_at', { ascending: false }).limit(5)).data || [];
-  } catch {}
+  try { runs = (await supabaseAdmin.from('generation_runs').select('*').order('created_at', { ascending: false }).limit(5)).data || []; } catch {}
   const lastByCat: Record<string, any> = {};
   for (const r of runs) if (!lastByCat[r.category]) lastByCat[r.category] = r;
-
-  const categories = Object.keys(CATEGORY_META) as LeadCategory[];
 
   return (
     <>
@@ -83,33 +98,50 @@ export default async function GeneratePage() {
             <div>
               <div style={{ fontWeight: 700, marginBottom: 2 }}>How it works</div>
               <div style={{ fontSize: 13.5, color: 'var(--muted)' }}>
-                Pick a category and click <strong>Run</strong>. Each run generates a fresh batch of leads,
-                writes them to your database, and records a full log. (This demo generator runs on Vercel;
-                production swaps in the GitHub-Actions scrapers — same tables, same logs.)
+                Pick a category and click <strong>Run</strong>. Each run generates a batch of leads with all available
+                contacts (email, phone, LinkedIn, website), writes an <strong>AI brief</strong> for each, and records a full log.
+                Create your own categories below, or <a href="/schedules" style={{ color: 'var(--brand)', fontWeight: 600 }}>schedule</a> runs to repeat automatically.
               </div>
             </div>
           </div>
         </div>
 
         <div className="cat-grid">
-          {categories.map((c) => {
-            const meta = CATEGORY_META[c];
-            const last = lastByCat[c];
+          {cats.map((c: any) => {
+            const last = lastByCat[c.key];
             return (
-              <div key={c} className="cat-card">
-                <div className="cat-icon">{meta.icon}</div>
-                <div className="cat-name">{meta.label}</div>
-                <div className="cat-blurb">{meta.blurb}</div>
-                <div className="cat-meta">
-                  {last ? `Last run ${timeAgo(last.created_at)} · ${last.leads_generated} leads` : 'Never run'}
-                </div>
+              <div key={c.key} className="cat-card">
+                <div className="cat-icon">{c.icon}</div>
+                <div className="cat-name">{c.label}{!c.is_builtin && <span className="badge badge-gray" style={{ marginLeft: 8, fontSize: 10, verticalAlign: 'middle' }}>custom</span>}</div>
+                <div className="cat-blurb">{c.description || 'Custom lead category.'}</div>
+                <div className="cat-meta">{last ? `Last run ${timeAgo(last.created_at)} · ${last.leads_generated} leads` : 'Never run'}</div>
                 <form action={runGeneration}>
-                  <input type="hidden" name="category" value={c} />
+                  <input type="hidden" name="category" value={c.key} />
                   <button type="submit" style={{ width: '100%' }}>▶ Run Generation</button>
                 </form>
+                {!c.is_builtin && (
+                  <form action={deleteCategory} style={{ marginTop: 8 }}>
+                    <input type="hidden" name="key" value={c.key} />
+                    <button type="submit" className="btn-danger btn-sm" style={{ width: '100%' }}>Delete category</button>
+                  </form>
+                )}
               </div>
             );
           })}
+
+          <div className="cat-card" style={{ borderStyle: 'dashed', background: '#fbfcfe' }}>
+            <div className="cat-icon" style={{ background: '#eef2f8' }}>＋</div>
+            <div className="cat-name">New Category</div>
+            <div className="cat-blurb">Create your own lead category.</div>
+            <form action={createCategory}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <input name="icon" placeholder="🎯" maxLength={2} style={{ width: 56, textAlign: 'center' }} />
+                <input name="label" placeholder="Category name" required style={{ flex: 1 }} />
+              </div>
+              <input name="description" placeholder="Short description (optional)" style={{ width: '100%', marginBottom: 8 }} />
+              <button type="submit" className="btn-ghost" style={{ width: '100%' }}>Create Category</button>
+            </form>
+          </div>
         </div>
 
         <div className="card section-gap">
@@ -123,11 +155,12 @@ export default async function GeneratePage() {
           ) : (
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Category</th><th>Source</th><th>Leads</th><th>Duration</th><th>Status</th><th>When</th></tr></thead>
+                <thead><tr><th>Category</th><th>Trigger</th><th>Source</th><th>Leads</th><th>Duration</th><th>Status</th><th>When</th></tr></thead>
                 <tbody>
                   {runs.map((r) => (
                     <tr key={r.id}>
-                      <td className="cell-strong">{CATEGORY_META[r.category as LeadCategory]?.icon} {label(r.category)}</td>
+                      <td className="cell-strong">{label(r.category)}</td>
+                      <td><span className={`badge ${r.trigger === 'schedule' ? 'badge-blue' : 'badge-gray'}`}>{label(r.trigger || 'manual')}</span></td>
                       <td className="cell-muted">{r.source}</td>
                       <td>{r.leads_generated}</td>
                       <td className="cell-muted">{r.duration_ms} ms</td>

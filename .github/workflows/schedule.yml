@@ -1,0 +1,27 @@
+name: Run due lead-gen schedules
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # every 15 minutes (GitHub's finest reliable resolution)
+  workflow_dispatch: {}       # allow manual "Run now" from the Actions tab / API
+
+concurrency:
+  group: run-schedules
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Execute due schedules
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: npx tsx scripts/run-due-schedules.ts

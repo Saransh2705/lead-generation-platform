@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "run-schedules": "tsx scripts/run-due-schedules.ts",
     "scrape": "tsx scripts/scrape.ts",
     "sell-email": "tsx scripts/sell-email.ts",
     "draft-linkedin": "tsx scripts/draft-linkedin.ts",

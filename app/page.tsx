@@ -27,6 +27,8 @@ export default async function Dashboard() {
   const pending = requests.filter((r) => r.status === 'pending').length;
   let totalRuns = 0;
   try { const { count } = await supabaseAdmin.from('generation_runs').select('*', { count: 'exact', head: true }); totalRuns = count || 0; } catch {}
+  let activeSchedules = 0;
+  try { const { count } = await supabaseAdmin.from('schedules').select('*', { count: 'exact', head: true }).eq('enabled', true); activeSchedules = count || 0; } catch {}
 
   const byCat = (Object.keys(CATEGORY_META) as LeadCategory[]).map((c) => ({
     key: c, label: CATEGORY_META[c].label, icon: CATEGORY_META[c].icon,
@@ -68,6 +70,12 @@ export default async function Dashboard() {
             <div className="stat-label">Generation Runs</div>
             <div className="stat-value">{totalRuns}</div>
             <div className="stat-foot">lead-gen jobs executed</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon">⏱️</div>
+            <div className="stat-label">Active Schedules</div>
+            <div className="stat-value">{activeSchedules}</div>
+            <div className="stat-foot"><a href="/schedules" style={{ color: 'var(--brand)', fontWeight: 600 }}>manage →</a></div>
           </div>
         </div>
 
