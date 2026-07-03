@@ -18,27 +18,19 @@ export default function Login() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #f8f9fb 0%, #f0f4f8 100%)', padding: '1rem' }}>
-      <div style={{ width: '100%', maxWidth: '420px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{fontSize: '2rem', fontWeight: 'bold', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', margin: 0, marginBottom: '0.5rem'}}>
-            Lead Gen Platform
-          </h1>
-          <p style={{color: '#6b7280', margin: 0}}>Admin Access</p>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#eef3fc 0%,#e2ecfb 100%)', padding: '1rem' }}>
+      <div style={{ width: '100%', maxWidth: 400 }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#3b82f6,#2563eb)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 22, margin: '0 auto 14px', boxShadow: '0 8px 20px rgba(37,99,235,0.35)' }}>LG</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#1e293b' }}>LeadGen Automation</div>
+          <div style={{ color: '#64748b', fontSize: 14, marginTop: 2 }}>Sign in to your control panel</div>
         </div>
-        <form onSubmit={handleSubmit} className="card" style={{ width: '100%' }}>
-          <h2 style={{fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#1f2937'}}>Welcome Back</h2>
-          {error && <div style={{ background: '#fee2e2', color: '#dc2626', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', border: '1px solid #fca5a5', fontSize: '0.875rem' }}>{error}</div>}
-          <input
-            type="password"
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoFocus
-            style={{ width: '100%', marginBottom: '1.5rem' }}
-          />
-          <button type="submit" style={{ width: '100%', fontSize: '1rem', fontWeight: 600 }}>Sign In</button>
-          <p style={{textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem', marginTop: '1rem', marginBottom: 0}}>Demo password: <code style={{background: '#f3f4f6', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', color: '#3b82f6', fontFamily: 'monospace'}}>admin123</code></p>
+        <form onSubmit={handleSubmit} className="card">
+          <label className="field-label">Password</label>
+          {error && <div style={{ background: '#fee2e2', color: '#dc2626', padding: '10px 12px', borderRadius: 10, marginBottom: 12, border: '1px solid #fca5a5', fontSize: 13 }}>{error}</div>}
+          <input type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus style={{ width: '100%', marginBottom: 16 }} />
+          <button type="submit" style={{ width: '100%' }}>Sign In</button>
+          <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, marginTop: 14, marginBottom: 0 }}>Demo password: <code style={{ background: '#eff4ff', padding: '2px 8px', borderRadius: 6, color: '#2563eb', fontFamily: 'monospace' }}>admin123</code></p>
         </form>
       </div>
     </div>

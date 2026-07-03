@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import Sidebar from './components/Sidebar';
 
 export const metadata: Metadata = {
-  title: 'Lead Generation Platform',
+  title: 'LeadGen — Automation Platform',
   description: 'Autonomous lead generation & sales',
 };
 
@@ -10,30 +11,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <nav style={{
-          background: 'white',
-          padding: '1rem',
-          borderBottom: '2px solid #e5e7eb',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100
-        }}>
-          <div style={{ maxWidth: '80rem', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0, background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-              Lead Gen Platform
-            </h1>
-            <div style={{ display: 'flex', gap: '2rem' }}>
-              <a href="/" className="nav-link">Dashboard</a>
-              <a href="/leads" className="nav-link">Leads</a>
-              <a href="/requests" className="nav-link">Requests</a>
-              <a href="/payments" className="nav-link">Payments</a>
-            </div>
-          </div>
-        </nav>
-        <main style={{ maxWidth: '80rem', margin: '0 auto', padding: '2rem 1.5rem' }}>
-          {children}
-        </main>
+        <div className="app-shell">
+          <Sidebar />
+          <div className="main">{children}</div>
+        </div>
       </body>
     </html>
   );
