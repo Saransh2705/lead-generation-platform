@@ -1,0 +1,51 @@
+name: Deploy to Vercel (production)
+
+# Auto-deploy on every push to master. Replaces the (absent) native Vercel Git
+# integration. Uses the Vercel CLI with a stored token, then re-points the
+# user-facing alias so the bookmarked URL always tracks the latest build.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+
+concurrency:
+  group: vercel-prod-deploy
+  cancel-in-progress: true
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+  # The vercel.app alias the user actually bookmarks. A plain `--prod` deploy only
+  # re-points the primary domain (…-jade) + the git alias, so we reassign this one.
+  PUBLIC_ALIAS: lead-generation-platform-flaurasaransh-cybers-projects.vercel.app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: Pull production project settings + env
+        run: vercel pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Build (production)
+        run: vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Deploy prebuilt to production
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}" | tail -n1)
+          echo "Deployed: $url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Re-point user-facing alias
+        run: |
+          vercel alias set "${{ steps.deploy.outputs.url }}" "$PUBLIC_ALIAS" \
+            --token="${{ secrets.VERCEL_TOKEN }}" --scope=flaurasaransh-cybers-projects
+          echo "Alias $PUBLIC_ALIAS -> ${{ steps.deploy.outputs.url }}"
