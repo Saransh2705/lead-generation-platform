@@ -8,7 +8,18 @@ import { toUpsertPayload } from './quality/dedupe';
 import { pace } from './core/pacing';
 import type { UpsertPayload } from './quality/types';
 
-export type WorkItem = { category: string; source_key: string; geo?: string | null; count?: number };
+export type WorkItem = {
+  category: string;
+  source_key: string;
+  geo?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  search_terms?: string | null;
+  osm_filter?: string | null;
+  country?: string | null;
+  radius_m?: number | null;
+  count?: number;
+};
 export type ItemResult = { source_key: string; status: 'ok' | 'empty' | 'blocked' | 'error'; found: number; enriched: number; payloads: UpsertPayload[]; error?: string };
 
 export async function scrapeItem(
@@ -24,12 +35,19 @@ export async function scrapeItem(
   // Only OpenStreetMap discovery is implemented so far (website_enrich is a step,
   // google_maps/yellowpages come in Phase 6).
   if (item.source_key !== 'osm_overpass') return { ...base, status: 'error', error: 'source not implemented' };
-  if (!geo) return { ...base, status: 'error', error: 'no geo' };
 
-  const loc = await geocode(geo);
-  if (!loc) return { ...base, status: 'error', error: 'geocode failed (nominatim blocked/timeout?)' };
+  // Prefer the category's pre-geocoded coords (Nominatim blocks datacenter IPs).
+  let lat = item.lat ?? null, lng = item.lng ?? null;
+  if ((lat == null || lng == null) && geo) {
+    const loc = await geocode(geo);
+    if (loc) { lat = loc.lat; lng = loc.lng; }
+  }
+  if (lat == null || lng == null) return { ...base, status: 'error', error: 'no coordinates (category not geocoded)' };
 
-  const seed = await overpassSearch({ category: item.category, lat: loc.lat, lng: loc.lng, geo, limit });
+  const seed = await overpassSearch({
+    category: item.category, lat, lng, geo, limit,
+    radiusM: item.radius_m ?? undefined, searchTerms: item.search_terms, osmFilter: item.osm_filter, country: item.country,
+  });
   if (seed.status !== 'ok') return { ...base, status: seed.status, found: seed.candidates.length, error: seed.error };
 
   let enriched = 0;

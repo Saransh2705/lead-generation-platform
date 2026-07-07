@@ -7,10 +7,10 @@ type Opt = { value: string; label: string };
 type Col = { key: string; header: string };
 
 export default function LeadsFilters(props: {
-  category: string; status: string; has: string; date: string; from: string; to: string; cols: string[];
-  categoryOpts: Opt[]; statusOpts: Opt[]; contactOpts: Opt[]; dateOpts: Opt[]; allCols: Col[];
+  category: string; status: string; has: string; date: string; conf: string; src: string; mode: string; from: string; to: string; cols: string[];
+  categoryOpts: Opt[]; statusOpts: Opt[]; contactOpts: Opt[]; dateOpts: Opt[]; confOpts: Opt[]; sourceOpts: Opt[]; modeOpts: Opt[]; allCols: Col[];
 }) {
-  const { category, status, has, date, from, to, cols, categoryOpts, statusOpts, contactOpts, dateOpts, allCols } = props;
+  const { category, status, has, date, conf, src, mode, from, to, cols, categoryOpts, statusOpts, contactOpts, dateOpts, confOpts, sourceOpts, modeOpts, allCols } = props;
   const router = useRouter();
   const [colsOpen, setColsOpen] = useState(false);
   const colsRef = useRef<HTMLDivElement>(null);
@@ -25,6 +25,7 @@ export default function LeadsFilters(props: {
   const nav = (over: Record<string, string>) => {
     const p = new URLSearchParams();
     p.set('category', category); p.set('status', status); p.set('has', has); p.set('date', date);
+    p.set('conf', conf); p.set('src', src); p.set('mode', mode);
     if (from) p.set('from', from);
     if (to) p.set('to', to);
     p.set('cols', cols.join(','));
@@ -58,6 +59,24 @@ export default function LeadsFilters(props: {
       <Group label="Status">
         <select style={sel} value={status} onChange={(e) => nav({ status: e.target.value })}>
           {statusOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </Group>
+
+      <Group label="Confidence">
+        <select style={sel} value={conf} onChange={(e) => nav({ conf: e.target.value })}>
+          {confOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </Group>
+
+      <Group label="Source">
+        <select style={sel} value={src} onChange={(e) => nav({ src: e.target.value })}>
+          {sourceOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </Group>
+
+      <Group label="Mode">
+        <select style={sel} value={mode} onChange={(e) => nav({ mode: e.target.value })}>
+          {modeOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </Group>
 

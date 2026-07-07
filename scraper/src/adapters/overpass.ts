@@ -14,6 +14,30 @@ const ENDPOINTS = [
 ];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Build a category-specific Overpass query: raw osm_filter wins; else keyword
+// match against common business tag keys + name; else generic "any business".
+function buildQuery(radius: number, lat: number, lng: number, limit: number, searchTerms?: string | null, osmFilter?: string | null): string {
+  const N = Math.min(limit * 3, 200);
+  const around = `around:${radius},${lat},${lng}`;
+  let filters: string[];
+  if (osmFilter && osmFilter.trim()) {
+    filters = [`nwr(${around})[name]${osmFilter.trim()};`]; // e.g. [amenity=dentist]
+  } else if (searchTerms && searchTerms.trim()) {
+    const term = searchTerms.trim().replace(/[^a-z0-9 ]/gi, '').replace(/\s+/g, '|'); // "car repair" → "car|repair"
+    const keys = ['amenity', 'shop', 'office', 'craft', 'healthcare', 'leisure', 'tourism', 'industrial'];
+    filters = keys.map((k) => `nwr(${around})[name]["${k}"~"${term}",i];`);
+    filters.push(`nwr(${around})[name][~"^name"~"${term}",i];`);
+  } else {
+    filters = [
+      `nwr(${around})[name][website];`,
+      `nwr(${around})[name]["contact:website"];`,
+      `nwr(${around})[name][phone];`,
+      `nwr(${around})[name]["contact:phone"];`,
+    ];
+  }
+  return `[out:json][timeout:25];\n(\n${filters.join('\n')}\n);\nout center ${N};`;
+}
+
 export async function overpassSearch(opts: {
   category: string;
   lat: number;
@@ -21,18 +45,13 @@ export async function overpassSearch(opts: {
   geo: string;
   limit: number;
   radiusM?: number;
+  searchTerms?: string | null;
+  osmFilter?: string | null;
+  country?: string | null;
 }): Promise<{ candidates: RawCandidate[]; status: 'ok' | 'empty' | 'blocked' | 'error'; error?: string }> {
   const radius = opts.radiusM ?? 6000;
   const { lat, lng, limit } = opts;
-  // Union of "has a name AND (website|phone)" — business-like POIs.
-  const q = `[out:json][timeout:25];
-(
-  nwr(around:${radius},${lat},${lng})[name][website];
-  nwr(around:${radius},${lat},${lng})[name]["contact:website"];
-  nwr(around:${radius},${lat},${lng})[name][phone];
-  nwr(around:${radius},${lat},${lng})[name]["contact:phone"];
-);
-out center ${Math.min(limit * 3, 200)};`;
+  const q = buildQuery(radius, lat, lng, limit, opts.searchTerms, opts.osmFilter);
 
   const headers = {
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -87,6 +106,7 @@ out center ${Math.min(limit * 3, 200)};`;
         phone,
         website,
         location: opts.geo,
+        country: opts.country ?? null,
         geo: opts.geo,
         lat: typeof p.lat === 'number' ? p.lat : null,
         lng: typeof p.lon === 'number' ? p.lon : null,

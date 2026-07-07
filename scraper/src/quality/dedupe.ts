@@ -60,6 +60,7 @@ export async function toUpsertPayload(
     website: c.website ?? null,
     company: c.company ?? c.name ?? null,
     location: c.location ?? c.geo ?? null,
+    country: c.country ?? null,
     source: c.source_key,
     source_key: c.source_key,
     source_url: c.source_url ?? null,
