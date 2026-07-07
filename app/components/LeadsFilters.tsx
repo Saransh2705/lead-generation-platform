@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Combobox from './Combobox';
 
 type Opt = { value: string; label: string };
 type Col = { key: string; header: string };
@@ -47,7 +48,6 @@ export default function LeadsFilters(props: {
     nav({ cols: next.join(',') || 'name' });
   };
 
-  const sel: React.CSSProperties = { minWidth: 168, cursor: 'pointer', padding: '9px 12px' };
   const Group = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <span className="field-label">{label}</span>
@@ -55,69 +55,48 @@ export default function LeadsFilters(props: {
     </div>
   );
 
+  const geoOpt = (all: string, list: string[]) => [{ value: 'all', label: all }, ...list.map((v) => ({ value: v, label: v }))];
+
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
       <Group label="Category">
-        <select style={sel} value={category} onChange={(e) => nav({ category: e.target.value })}>
-          {categoryOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <Combobox value={category} options={categoryOpts} onChange={(v) => nav({ category: v })} />
       </Group>
 
       <Group label="Country">
-        <select style={sel} value={country} onChange={(e) => nav({ country: e.target.value, state: 'all', city: 'all' })}>
-          <option value="all">All countries</option>
-          {countryList.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <Combobox value={country} options={geoOpt('All countries', countryList)} onChange={(v) => nav({ country: v, state: 'all', city: 'all' })} />
       </Group>
 
       <Group label="State / region">
-        <select style={sel} value={state} onChange={(e) => nav({ state: e.target.value, city: 'all' })} disabled={stateList.length === 0}>
-          <option value="all">All states</option>
-          {stateList.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+        <Combobox value={state} options={geoOpt('All states', stateList)} disabled={stateList.length === 0} onChange={(v) => nav({ state: v, city: 'all' })} />
       </Group>
 
       <Group label="City">
-        <select style={sel} value={city} onChange={(e) => nav({ city: e.target.value })} disabled={cityList.length === 0}>
-          <option value="all">All cities</option>
-          {cityList.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <Combobox value={city} options={geoOpt('All cities', cityList)} disabled={cityList.length === 0} onChange={(v) => nav({ city: v })} />
       </Group>
 
       <Group label="Status">
-        <select style={sel} value={status} onChange={(e) => nav({ status: e.target.value })}>
-          {statusOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <Combobox value={status} options={statusOpts} onChange={(v) => nav({ status: v })} />
       </Group>
 
       <Group label="Confidence">
-        <select style={sel} value={conf} onChange={(e) => nav({ conf: e.target.value })}>
-          {confOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <Combobox value={conf} options={confOpts} onChange={(v) => nav({ conf: v })} />
       </Group>
 
       <Group label="Source">
-        <select style={sel} value={src} onChange={(e) => nav({ src: e.target.value })}>
-          {sourceOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <Combobox value={src} options={sourceOpts} onChange={(v) => nav({ src: v })} />
       </Group>
 
       <Group label="Mode">
-        <select style={sel} value={mode} onChange={(e) => nav({ mode: e.target.value })}>
-          {modeOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <Combobox value={mode} options={modeOpts} onChange={(v) => nav({ mode: v })} />
       </Group>
 
       <Group label="Contacts">
-        <select style={sel} value={has} onChange={(e) => nav({ has: e.target.value })}>
-          {contactOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <Combobox value={has} options={contactOpts} onChange={(v) => nav({ has: v })} />
       </Group>
 
       <Group label="Date fetched">
-        <select style={sel} value={date} onChange={(e) => nav({ date: e.target.value, from: '', to: '' })}>
-          {dateOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <Combobox value={date} options={dateOpts} onChange={(v) => nav({ date: v, from: '', to: '' })} />
       </Group>
 
       {date === 'custom' && (

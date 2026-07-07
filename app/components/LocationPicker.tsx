@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Combobox from './Combobox';
 
 type Opt = { name: string; iso?: string; lat: number | null; lng: number | null };
 type Initial = { country?: string; state?: string; city?: string; lat?: number; lng?: number; radius_m?: number };
@@ -43,31 +44,24 @@ export default function LocationPicker({ initial, onReady }: { initial?: Initial
   }, [countryName, stateName, cityName, countries, states, cities]);
 
   const geo = [cityName, stateName, countryName].filter(Boolean).join(', ');
-  const sel: React.CSSProperties = { width: '100%', padding: '9px 12px', cursor: 'pointer' };
+  const countryOpts = countries.map((c) => ({ value: c.name, label: c.name }));
+  const stateOpts = [{ value: '', label: 'All states' }, ...states.map((s) => ({ value: s.name, label: s.name }))];
+  const cityOpts = [{ value: '', label: 'All cities' }, ...cities.map((c) => ({ value: c.name, label: c.name }))];
 
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12 }}>
         <div>
           <label className="field-label">Country</label>
-          <select style={sel} value={countryName} onChange={(e) => { setCountryName(e.target.value); setStateName(''); setCityName(''); }}>
-            <option value="">Select country…</option>
-            {countries.map((c) => <option key={c.iso} value={c.name}>{c.name}</option>)}
-          </select>
+          <Combobox value={countryName} options={countryOpts} placeholder="Select country…" onChange={(v) => { setCountryName(v); setStateName(''); setCityName(''); }} />
         </div>
         <div>
           <label className="field-label">State / region</label>
-          <select style={sel} value={stateName} onChange={(e) => { setStateName(e.target.value); setCityName(''); }} disabled={!states.length}>
-            <option value="">All states</option>
-            {states.map((s) => <option key={s.iso} value={s.name}>{s.name}</option>)}
-          </select>
+          <Combobox value={stateName} options={stateOpts} disabled={!states.length} onChange={(v) => { setStateName(v); setCityName(''); }} />
         </div>
         <div>
           <label className="field-label">City</label>
-          <select style={sel} value={cityName} onChange={(e) => setCityName(e.target.value)} disabled={!cities.length}>
-            <option value="">All cities</option>
-            {cities.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-          </select>
+          <Combobox value={cityName} options={cityOpts} disabled={!cities.length} onChange={(v) => setCityName(v)} />
         </div>
       </div>
       {resolved

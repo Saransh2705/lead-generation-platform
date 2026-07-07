@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
+import FormCombobox from '@/app/components/FormCombobox';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,10 +82,8 @@ export default async function SchedulesPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: 14, marginBottom: 16 }}>
                 <div>
                   <label className="field-label">Category</label>
-                  <select name="category_key" required style={{ width: '100%' }} defaultValue="">
-                    <option value="" disabled>Choose a category…</option>
-                    {runnable.map((c: any) => <option key={c.key} value={c.key}>{c.icon} {c.label} — {c.geo}</option>)}
-                  </select>
+                  <FormCombobox name="category_key" placeholder="Choose a category…"
+                    options={runnable.map((c: any) => ({ value: c.key, label: `${c.icon} ${c.label} — ${c.geo}` }))} />
                 </div>
                 <div>
                   <label className="field-label">Re-scrape every … minutes</label>
