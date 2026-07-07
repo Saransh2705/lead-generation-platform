@@ -1,0 +1,29 @@
+{
+  "name": "leadgen-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Free multi-source Playwright lead scraper (runs in GitHub Actions).",
+  "scripts": {
+    "run:local": "tsx src/run-local.ts",
+    "run:job": "tsx src/index.ts",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "libphonenumber-js": "^1.11.0",
+    "p-limit": "^5.0.0",
+    "pg": "^8.13.0",
+    "playwright": "^1.48.0",
+    "playwright-extra": "^4.3.6",
+    "psl": "^1.9.0",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.11.0",
+    "@types/psl": "^1.1.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

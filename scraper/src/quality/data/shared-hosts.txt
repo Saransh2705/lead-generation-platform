@@ -1,0 +1,36 @@
+# Shared hosting / social / aggregator domains. A business on one of these does
+# NOT own the domain, so we must NOT dedup by domain — fall back to name+geocell.
+myshopify.com
+wixsite.com
+wix.com
+editorx.io
+sites.google.com
+google.com
+business.site
+wordpress.com
+blogspot.com
+weebly.com
+squarespace.com
+godaddysites.com
+webflow.io
+netlify.app
+vercel.app
+github.io
+facebook.com
+m.facebook.com
+instagram.com
+linktr.ee
+linktree.com
+yelp.com
+tripadvisor.com
+foursquare.com
+mapquest.com
+yellowpages.com
+bbb.org
+opentable.com
+doordash.com
+ubereats.com
+grubhub.com
+etsy.com
+amazon.com
+ebay.com
