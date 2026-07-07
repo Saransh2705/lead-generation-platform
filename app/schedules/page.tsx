@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 import FormCombobox from '@/app/components/FormCombobox';
+import SchedulesTable from '@/app/components/SchedulesTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,20 +14,6 @@ function intervalLabel(m: number) {
   if (m % 60 === 0) return `Every ${m / 60} ${m === 60 ? 'hour' : 'hours'}`;
   return `Every ${Math.floor(m / 60)}h ${m % 60}m`;
 }
-function fmt(iso: string | null) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-function whenNext(iso: string | null) {
-  if (!iso) return '—';
-  const diff = new Date(iso).getTime() - Date.now();
-  if (diff <= 0) return 'due now';
-  const m = Math.round(diff / 60000);
-  if (m < 60) return `in ${m}m`;
-  const h = Math.floor(m / 60);
-  return h < 24 ? `in ${h}h ${m % 60}m` : `in ${Math.floor(h / 24)}d`;
-}
-
 async function createSchedule(formData: FormData) {
   'use server';
   const category_key = String(formData.get('category_key') || '');
@@ -52,12 +39,21 @@ async function deleteSchedule(formData: FormData) {
   await supabaseAdmin.from('schedules').delete().eq('id', formData.get('id'));
   revalidatePath('/schedules'); revalidatePath('/');
 }
+async function updateSchedule(formData: FormData) {
+  'use server';
+  const id = formData.get('id'); if (!id) return;
+  const interval_minutes = Math.max(5, parseInt(String(formData.get('interval_minutes') || '360')) || 360);
+  const lead_count = Math.max(1, Math.min(50, parseInt(String(formData.get('lead_count') || '12')) || 12));
+  const category_key = String(formData.get('category_key') || '').trim();
+  const patch: Record<string, any> = { interval_minutes, lead_count };
+  if (category_key) patch.category_key = category_key;
+  await supabaseAdmin.from('schedules').update(patch).eq('id', id);
+  revalidatePath('/schedules'); revalidatePath('/');
+}
 
 export default async function SchedulesPage() {
   const { data: categories } = await supabaseAdmin.from('categories').select('*').order('label');
   const cats = categories || [];
-  const catByKey: Record<string, any> = {};
-  for (const c of cats) catByKey[c.key] = c;
   // Only recurring schedules (hide one-off "Run now" rows).
   const { data: schedules } = await supabaseAdmin.from('schedules').select('*').eq('one_off', false).order('created_at', { ascending: false });
   const list = schedules || [];
@@ -108,40 +104,8 @@ export default async function SchedulesPage() {
           {list.length === 0 ? (
             <div className="empty">No schedules yet. Create one above to re-scrape a category automatically.</div>
           ) : (
-            <div className="table-wrap">
-              <table>
-                <thead><tr><th>Category</th><th>Location</th><th>Interval</th><th>Leads</th><th>Last run</th><th>Next run</th><th>Status</th><th>Actions</th></tr></thead>
-                <tbody>
-                  {list.map((s: any) => {
-                    const c = catByKey[s.category_key];
-                    return (
-                      <tr key={s.id}>
-                        <td className="cell-strong">{c ? `${c.icon} ${c.label}` : s.category_key}</td>
-                        <td className="cell-muted">{c?.geo || '—'}</td>
-                        <td className="cell-muted">{intervalLabel(s.interval_minutes)}</td>
-                        <td className="cell-muted">{s.lead_count}</td>
-                        <td className="cell-muted">{fmt(s.last_run_at)}</td>
-                        <td className="cell-muted">{s.enabled ? whenNext(s.next_run_at) : '—'}</td>
-                        <td><span className={`badge ${s.enabled ? 'badge-green' : 'badge-gray'}`}>{s.enabled ? 'Active' : 'Paused'}</span></td>
-                        <td>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <form action={toggleSchedule}>
-                              <input type="hidden" name="id" value={s.id} />
-                              <input type="hidden" name="enabled" value={String(s.enabled)} />
-                              <button type="submit" className="btn-ghost btn-sm">{s.enabled ? 'Pause' : 'Resume'}</button>
-                            </form>
-                            <form action={deleteSchedule}>
-                              <input type="hidden" name="id" value={s.id} />
-                              <button type="submit" className="btn-danger btn-sm">Delete</button>
-                            </form>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <SchedulesTable list={list as any} cats={runnable as any}
+              toggleAction={toggleSchedule} deleteAction={deleteSchedule} updateAction={updateSchedule} />
           )}
         </div>
       </div>
