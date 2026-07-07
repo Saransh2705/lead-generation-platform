@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import Pager from '@/app/components/Pager';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,16 +11,23 @@ const STATUS_BADGE: Record<string, string> = {
   failed: 'badge-red', blocked: 'badge-red', stuck: 'badge-red', skipped_home_offline: 'badge-gray',
 };
 
-export default async function LogsPage() {
+export default async function LogsPage({ searchParams }: { searchParams: Record<string, string> }) {
+  const PAGE_SIZE = 100;
+  const page = Math.max(1, parseInt(searchParams?.page || '1') || 1);
   let jobs: any[] = [];
-  try { jobs = (await supabaseAdmin.from('scrape_jobs').select('*').order('id', { ascending: false }).limit(50)).data || []; } catch {}
+  let total = 0;
+  try {
+    const r = await supabaseAdmin.from('scrape_jobs').select('*', { count: 'exact' })
+      .order('id', { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    jobs = r.data || []; total = r.count || 0;
+  } catch {}
 
   return (
     <>
       <div className="topbar">
         <div>
           <h1>Run Logs</h1>
-          <div className="sub">Every cloud scrape job — dispatched by Supabase, run on GitHub Actions</div>
+          <div className="sub">{total.toLocaleString()} cloud scrape job{total === 1 ? '' : 's'} — dispatched by Supabase, run on GitHub Actions{total > PAGE_SIZE ? ` · showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)}` : ''}</div>
         </div>
         <a href="/generate" className="btn btn-sm">+ New Run</a>
       </div>
@@ -62,6 +70,7 @@ export default async function LogsPage() {
             );
           })
         )}
+        <Pager total={total} page={page} pageSize={PAGE_SIZE} params={searchParams} />
       </div>
     </>
   );

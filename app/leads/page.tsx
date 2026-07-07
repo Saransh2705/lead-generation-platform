@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import ExportMenu from '@/app/components/ExportMenu';
 import LeadsFilters from '@/app/components/LeadsFilters';
 import LocalTime from '@/app/components/LocalTime';
+import Pager from '@/app/components/Pager';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,29 +92,44 @@ export default async function LeadsPage({ searchParams }: { searchParams: Record
     if (g.country && !seenGeo.has(key)) { seenGeo.add(key); geoTree.push({ country: g.country, state: g.state || '', city: g.city || '' }); }
   }
 
-  let query = supabaseAdmin.from('v_leads').select('*').order('created_at', { ascending: false }).limit(500);
-  if (category !== 'all') query = query.eq('category', category);
-  if (status !== 'all') query = query.eq('status', status);
-  if (src !== 'all') query = query.eq('source_key', src);
-  if (mode !== 'all') query = query.eq('mode', mode);
-  if (fCountry !== 'all') query = query.eq('country', fCountry);
-  if (fState !== 'all') query = query.eq('state', fState);
-  if (fCity !== 'all') query = query.eq('city', fCity);
-  if (has === 'email') query = query.not('email', 'is', null);
-  if (has === 'phone') query = query.not('phone', 'is', null);
-  if (has === 'linkedin') query = query.not('linkedin_url', 'is', null);
-  if (has === 'website') query = query.not('website', 'is', null);
-  if (conf === 'high') query = query.gte('confidence_effective', 70);
-  else if (conf === 'medium') { query = query.gte('confidence_effective', 40).lt('confidence_effective', 70); }
-  else if (conf === 'low') query = query.lt('confidence_effective', 40);
-  if (date === 'custom') {
-    if (from) query = query.gte('created_at', new Date(`${from}T00:00:00`).toISOString());
-    if (to) query = query.lte('created_at', new Date(`${to}T23:59:59.999`).toISOString());
-  } else { const cut = presetCutoff(date); if (cut) query = query.gte('created_at', cut); }
+  const PAGE_SIZE = 50;
+  const page = Math.max(1, parseInt(searchParams.page || '1') || 1);
+  const applyFilters = (q: any) => {
+    if (category !== 'all') q = q.eq('category', category);
+    if (status !== 'all') q = q.eq('status', status);
+    if (src !== 'all') q = q.eq('source_key', src);
+    if (mode !== 'all') q = q.eq('mode', mode);
+    if (fCountry !== 'all') q = q.eq('country', fCountry);
+    if (fState !== 'all') q = q.eq('state', fState);
+    if (fCity !== 'all') q = q.eq('city', fCity);
+    if (has === 'email') q = q.not('email', 'is', null);
+    if (has === 'phone') q = q.not('phone', 'is', null);
+    if (has === 'linkedin') q = q.not('linkedin_url', 'is', null);
+    if (has === 'website') q = q.not('website', 'is', null);
+    if (conf === 'high') q = q.gte('confidence_effective', 70);
+    else if (conf === 'medium') { q = q.gte('confidence_effective', 40).lt('confidence_effective', 70); }
+    else if (conf === 'low') q = q.lt('confidence_effective', 40);
+    if (date === 'custom') {
+      if (from) q = q.gte('created_at', new Date(`${from}T00:00:00`).toISOString());
+      if (to) q = q.lte('created_at', new Date(`${to}T23:59:59.999`).toISOString());
+    } else { const cut = presetCutoff(date); if (cut) q = q.gte('created_at', cut); }
+    return q;
+  };
 
+  // Paginated display (50/page) + the real filtered total.
   let leads: any[] = [];
-  try { leads = (await query).data || []; } catch {}
+  let total = 0;
+  try {
+    const r = await applyFilters(supabaseAdmin.from('v_leads').select('*', { count: 'exact' }))
+      .order('created_at', { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    leads = r.data || []; total = r.count || 0;
+  } catch {}
   const rows = leads.map((l) => ({ ...l, category_label: catMap[l.category]?.label || label(l.category) }));
+
+  // Export covers the whole filtered set (not just the current page).
+  let exportSrc: any[] = [];
+  try { exportSrc = (await applyFilters(supabaseAdmin.from('v_leads').select('*')).order('created_at', { ascending: false }).limit(2000)).data || []; } catch {}
+  const exportRows = exportSrc.map((l) => ({ ...l, category_label: catMap[l.category]?.label || label(l.category) }));
 
   const exportFields: { key: string; header: string }[] = [];
   for (const key of activeCols) {
@@ -134,7 +150,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Record
           <h1>Leads</h1>
           <div className="sub">Real businesses scraped across your categories</div>
         </div>
-        <ExportMenu rows={rows} fields={exportFields} />
+        <ExportMenu rows={exportRows} fields={exportFields} />
       </div>
       <div className="content">
         <div className="card" style={{ marginBottom: 20 }}>
@@ -147,7 +163,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: Record
         </div>
 
         <div className="card">
-          <div className="card-title" style={{ marginBottom: 12 }}>{rows.length} lead{rows.length === 1 ? '' : 's'}</div>
+          <div className="card-title" style={{ marginBottom: 12 }}>
+            {total.toLocaleString()} lead{total === 1 ? '' : 's'}
+            {total > PAGE_SIZE && <span className="cell-muted" style={{ fontWeight: 400, fontSize: 13, marginLeft: 8 }}>· showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)}</span>}
+          </div>
           {rows.length === 0 ? (
             <div className="empty">No leads match this filter. <a href="/generate" style={{ color: 'var(--brand)', fontWeight: 600 }}>Scrape some →</a></div>
           ) : (
@@ -197,6 +216,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Record
               </table>
             </div>
           )}
+          <Pager total={total} page={page} pageSize={PAGE_SIZE} params={searchParams} />
         </div>
       </div>
     </>

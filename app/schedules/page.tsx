@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 import FormCombobox from '@/app/components/FormCombobox';
 import SchedulesTable from '@/app/components/SchedulesTable';
+import Pager from '@/app/components/Pager';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,12 +52,19 @@ async function updateSchedule(formData: FormData) {
   revalidatePath('/schedules'); revalidatePath('/');
 }
 
-export default async function SchedulesPage() {
+export default async function SchedulesPage({ searchParams }: { searchParams: Record<string, string> }) {
+  const PAGE_SIZE = 50;
+  const page = Math.max(1, parseInt(searchParams?.page || '1') || 1);
   const { data: categories } = await supabaseAdmin.from('categories').select('*').order('label');
   const cats = categories || [];
   // Only recurring schedules (hide one-off "Run now" rows).
-  const { data: schedules } = await supabaseAdmin.from('schedules').select('*').eq('one_off', false).order('created_at', { ascending: false });
-  const list = schedules || [];
+  let list: any[] = [];
+  let total = 0;
+  try {
+    const r = await supabaseAdmin.from('schedules').select('*', { count: 'exact' }).eq('one_off', false)
+      .order('created_at', { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    list = r.data || []; total = r.count || 0;
+  } catch {}
   const runnable = cats.filter((c: any) => c.lat != null && c.lng != null);
 
   return (
@@ -100,12 +108,18 @@ export default async function SchedulesPage() {
         </div>
 
         <div className="card">
-          <div className="card-title" style={{ marginBottom: 12 }}>Active Schedules</div>
+          <div className="card-title" style={{ marginBottom: 12 }}>
+            {total.toLocaleString()} Schedule{total === 1 ? '' : 's'}
+            {total > PAGE_SIZE && <span className="cell-muted" style={{ fontWeight: 400, fontSize: 13, marginLeft: 8 }}>· showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)}</span>}
+          </div>
           {list.length === 0 ? (
             <div className="empty">No schedules yet. Create one above to re-scrape a category automatically.</div>
           ) : (
-            <SchedulesTable list={list as any} cats={runnable as any}
-              toggleAction={toggleSchedule} deleteAction={deleteSchedule} updateAction={updateSchedule} />
+            <>
+              <SchedulesTable list={list as any} cats={runnable as any}
+                toggleAction={toggleSchedule} deleteAction={deleteSchedule} updateAction={updateSchedule} />
+              <Pager total={total} page={page} pageSize={PAGE_SIZE} params={searchParams} />
+            </>
           )}
         </div>
       </div>

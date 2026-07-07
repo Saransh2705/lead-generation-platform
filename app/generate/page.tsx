@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 import CategoryManager from '@/app/components/CategoryManager';
+import Pager from '@/app/components/Pager';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,9 +57,13 @@ async function deleteCategory(formData: FormData) {
   revalidatePath('/generate'); revalidatePath('/schedules');
 }
 
-export default async function GeneratePage() {
-  const { data: categories } = await supabaseAdmin.from('categories').select('*').order('created_at', { ascending: false });
-  const cats = categories || [];
+export default async function GeneratePage({ searchParams }: { searchParams: Record<string, string> }) {
+  const PAGE_SIZE = 50;
+  const page = Math.max(1, parseInt(searchParams?.page || '1') || 1);
+  const catRes = await supabaseAdmin.from('categories').select('*', { count: 'exact' })
+    .order('created_at', { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+  const cats = catRes.data || [];
+  const totalCats = catRes.count || 0;
   const { data: srcData } = await supabaseAdmin.from('sources').select('key,label,icon,kind,enabled').eq('enabled', true).in('kind', ['osm', 'directory', 'maps']).order('label');
   const sources = (srcData || []).map((s: any) => ({ key: s.key, label: s.label, icon: s.icon }));
   // Lead count + last-lead time per category (cheap client-side aggregate).
@@ -80,11 +85,12 @@ export default async function GeneratePage() {
       <div className="topbar">
         <div>
           <h1>Generate Leads</h1>
-          <div className="sub">Create a category (business type + location), then Run a real cloud scrape</div>
+          <div className="sub">{totalCats.toLocaleString()} categor{totalCats === 1 ? 'y' : 'ies'} · create a category (business type + location), then Run a real cloud scrape{totalCats > PAGE_SIZE ? ` · showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalCats)}` : ''}</div>
         </div>
       </div>
       <div className="content">
         <CategoryManager categories={enriched} sources={sources} createAction={createCategory} updateAction={updateCategory} deleteAction={deleteCategory} />
+        <Pager total={totalCats} page={page} pageSize={PAGE_SIZE} params={searchParams} />
       </div>
     </>
   );
