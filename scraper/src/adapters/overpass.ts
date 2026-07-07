@@ -48,6 +48,8 @@ export async function overpassSearch(opts: {
   searchTerms?: string | null;
   osmFilter?: string | null;
   country?: string | null;
+  state?: string | null;
+  city?: string | null;
 }): Promise<{ candidates: RawCandidate[]; status: 'ok' | 'empty' | 'blocked' | 'error'; error?: string }> {
   const radius = opts.radiusM ?? 6000;
   const { lat, lng, limit } = opts;
@@ -107,6 +109,8 @@ export async function overpassSearch(opts: {
         website,
         location: opts.geo,
         country: opts.country ?? null,
+        state: opts.state ?? null,
+        city: opts.city ?? null,
         geo: opts.geo,
         lat: typeof p.lat === 'number' ? p.lat : null,
         lng: typeof p.lon === 'number' ? p.lon : null,

@@ -11,6 +11,8 @@ export type RawCandidate = {
   company?: string | null;
   location?: string | null;   // "City, ST" if known
   country?: string | null;
+  state?: string | null;
+  city?: string | null;
   geo?: string | null;        // the search geo string, e.g. "Austin, TX"
   lat?: number | null;
   lng?: number | null;
@@ -36,6 +38,8 @@ export type UpsertPayload = {
   company: string | null;
   location: string | null;
   country: string | null;
+  state: string | null;
+  city: string | null;
   source: string;
   source_key: string;
   source_url: string | null;

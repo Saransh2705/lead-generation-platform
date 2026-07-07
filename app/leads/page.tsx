@@ -31,6 +31,8 @@ const ALL_COLS = [
   { key: 'socials', header: 'Socials' },
   { key: 'brief', header: 'Brief' },
   { key: 'location', header: 'Location' },
+  { key: 'city', header: 'City' },
+  { key: 'state', header: 'State' },
   { key: 'country', header: 'Country' },
   { key: 'category', header: 'Category' },
   { key: 'source_key', header: 'Source' },
@@ -63,6 +65,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Record
   const conf = searchParams.conf || 'all';
   const src = searchParams.src || 'all';
   const mode = searchParams.mode || 'all';
+  const fCountry = searchParams.country || 'all';
+  const fState = searchParams.state || 'all';
+  const fCity = searchParams.city || 'all';
   const from = searchParams.from || '';
   const to = searchParams.to || '';
   const cols = (searchParams.cols ? searchParams.cols.split(',').filter((c) => ALL_COLS.some((x) => x.key === c)) : DEFAULT_COLS);
@@ -75,11 +80,23 @@ export default async function LeadsPage({ searchParams }: { searchParams: Record
   const { data: sourcesData } = await supabaseAdmin.from('sources').select('key,label').order('label');
   const sourceOpts = [{ value: 'all', label: 'All Sources' }, ...(sourcesData || []).map((s: any) => ({ value: s.key, label: s.label || s.key }))];
 
+  // Cascading geo filter tree from actual lead data.
+  const { data: geoRows } = await supabaseAdmin.from('leads').select('country,state,city').limit(5000);
+  const geoTree: { country: string; state: string; city: string }[] = [];
+  const seenGeo = new Set<string>();
+  for (const g of geoRows || []) {
+    const key = `${g.country || ''}|${g.state || ''}|${g.city || ''}`;
+    if (g.country && !seenGeo.has(key)) { seenGeo.add(key); geoTree.push({ country: g.country, state: g.state || '', city: g.city || '' }); }
+  }
+
   let query = supabaseAdmin.from('v_leads').select('*').order('created_at', { ascending: false }).limit(500);
   if (category !== 'all') query = query.eq('category', category);
   if (status !== 'all') query = query.eq('status', status);
   if (src !== 'all') query = query.eq('source_key', src);
   if (mode !== 'all') query = query.eq('mode', mode);
+  if (fCountry !== 'all') query = query.eq('country', fCountry);
+  if (fState !== 'all') query = query.eq('state', fState);
+  if (fCity !== 'all') query = query.eq('city', fCity);
   if (has === 'email') query = query.not('email', 'is', null);
   if (has === 'phone') query = query.not('phone', 'is', null);
   if (has === 'linkedin') query = query.not('linkedin_url', 'is', null);
@@ -119,7 +136,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Record
       <div className="content">
         <div className="card" style={{ marginBottom: 20 }}>
           <LeadsFilters
-            category={category} status={status} has={has} date={date} conf={conf} src={src} mode={mode} from={from} to={to} cols={activeCols}
+            category={category} status={status} has={has} date={date} conf={conf} src={src} mode={mode}
+            country={fCountry} state={fState} city={fCity} geoTree={geoTree} from={from} to={to} cols={activeCols}
             categoryOpts={categoryOpts} statusOpts={STATUS_OPTS} contactOpts={CONTACT_OPTS} dateOpts={DATE_OPTS}
             confOpts={CONF_OPTS} sourceOpts={sourceOpts} modeOpts={MODE_OPTS} allCols={ALL_COLS}
           />

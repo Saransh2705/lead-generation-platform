@@ -17,6 +17,8 @@ export type WorkItem = {
   search_terms?: string | null;
   osm_filter?: string | null;
   country?: string | null;
+  state?: string | null;
+  city?: string | null;
   radius_m?: number | null;
   count?: number;
 };
@@ -46,7 +48,8 @@ export async function scrapeItem(
 
   const seed = await overpassSearch({
     category: item.category, lat, lng, geo, limit,
-    radiusM: item.radius_m ?? undefined, searchTerms: item.search_terms, osmFilter: item.osm_filter, country: item.country,
+    radiusM: item.radius_m ?? undefined, searchTerms: item.search_terms, osmFilter: item.osm_filter,
+    country: item.country, state: item.state, city: item.city,
   });
   if (seed.status !== 'ok') return { ...base, status: seed.status, found: seed.candidates.length, error: seed.error };
 

@@ -13,6 +13,7 @@ function timeAgo(iso: string) {
 }
 
 function fields(fd: FormData) {
+  const radius = parseInt(String(fd.get('radius_m') || '')) || 6000;
   return {
     label: String(fd.get('label') || '').trim(),
     icon: String(fd.get('icon') || '').trim() || '📋',
@@ -20,7 +21,10 @@ function fields(fd: FormData) {
     osm_filter: String(fd.get('osm_filter') || '').trim() || null,
     geo: String(fd.get('geo') || '').trim() || null,
     country: String(fd.get('country') || '').trim() || null,
+    state: String(fd.get('state') || '').trim() || null,
+    city: String(fd.get('city') || '').trim() || null,
     lat: num(fd.get('lat')), lng: num(fd.get('lng')),
+    radius_m: radius,
     lead_count: parseInt(String(fd.get('lead_count') || '12')) || 12,
   };
 }

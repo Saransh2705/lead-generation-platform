@@ -6,11 +6,17 @@ import { useRouter } from 'next/navigation';
 type Opt = { value: string; label: string };
 type Col = { key: string; header: string };
 
+type Geo = { country: string; state: string; city: string };
 export default function LeadsFilters(props: {
-  category: string; status: string; has: string; date: string; conf: string; src: string; mode: string; from: string; to: string; cols: string[];
+  category: string; status: string; has: string; date: string; conf: string; src: string; mode: string;
+  country: string; state: string; city: string; geoTree: Geo[]; from: string; to: string; cols: string[];
   categoryOpts: Opt[]; statusOpts: Opt[]; contactOpts: Opt[]; dateOpts: Opt[]; confOpts: Opt[]; sourceOpts: Opt[]; modeOpts: Opt[]; allCols: Col[];
 }) {
-  const { category, status, has, date, conf, src, mode, from, to, cols, categoryOpts, statusOpts, contactOpts, dateOpts, confOpts, sourceOpts, modeOpts, allCols } = props;
+  const { category, status, has, date, conf, src, mode, country, state, city, geoTree, from, to, cols, categoryOpts, statusOpts, contactOpts, dateOpts, confOpts, sourceOpts, modeOpts, allCols } = props;
+  const uniq = (a: string[]) => [...new Set(a.filter(Boolean))].sort();
+  const countryList = uniq(geoTree.map((g) => g.country));
+  const stateList = uniq(geoTree.filter((g) => country === 'all' || g.country === country).map((g) => g.state));
+  const cityList = uniq(geoTree.filter((g) => (country === 'all' || g.country === country) && (state === 'all' || g.state === state)).map((g) => g.city));
   const router = useRouter();
   const [colsOpen, setColsOpen] = useState(false);
   const colsRef = useRef<HTMLDivElement>(null);
@@ -26,6 +32,7 @@ export default function LeadsFilters(props: {
     const p = new URLSearchParams();
     p.set('category', category); p.set('status', status); p.set('has', has); p.set('date', date);
     p.set('conf', conf); p.set('src', src); p.set('mode', mode);
+    p.set('country', country); p.set('state', state); p.set('city', city);
     if (from) p.set('from', from);
     if (to) p.set('to', to);
     p.set('cols', cols.join(','));
@@ -53,6 +60,27 @@ export default function LeadsFilters(props: {
       <Group label="Category">
         <select style={sel} value={category} onChange={(e) => nav({ category: e.target.value })}>
           {categoryOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </Group>
+
+      <Group label="Country">
+        <select style={sel} value={country} onChange={(e) => nav({ country: e.target.value, state: 'all', city: 'all' })}>
+          <option value="all">All countries</option>
+          {countryList.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </Group>
+
+      <Group label="State / region">
+        <select style={sel} value={state} onChange={(e) => nav({ state: e.target.value, city: 'all' })} disabled={stateList.length === 0}>
+          <option value="all">All states</option>
+          {stateList.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </Group>
+
+      <Group label="City">
+        <select style={sel} value={city} onChange={(e) => nav({ city: e.target.value })} disabled={cityList.length === 0}>
+          <option value="all">All cities</option>
+          {cityList.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
       </Group>
 

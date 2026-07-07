@@ -16,25 +16,26 @@
     "draft-facebook": "tsx scripts/draft-facebook.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "clsx": "^2.0.0",
+    "country-state-city": "^3.2.1",
+    "date-fns": "^2.30.0",
     "next": "^14.0.0",
+    "playwright": "^1.40.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "@supabase/supabase-js": "^2.38.0",
-    "playwright": "^1.40.0",
     "resend": "^2.0.0",
-    "zod": "^3.22.0",
-    "clsx": "^2.0.0",
-    "date-fns": "^2.30.0"
+    "zod": "^3.22.0"
   },
   "devDependencies": {
-    "typescript": "^5.3.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
-    "tailwindcss": "^3.3.0",
     "autoprefixer": "^10.4.0",
-    "postcss": "^8.4.0",
-    "tsx": "^4.7.0",
     "eslint": "^8.54.0",
-    "eslint-config-next": "^14.0.0"
+    "eslint-config-next": "^14.0.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.3.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
   }
 }
