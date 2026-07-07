@@ -9,7 +9,13 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Server-side client. Prefer the service-role key (bypasses RLS); if it isn't a
 // valid key, fall back to the anon key, which works via the anon RLS policies.
-export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey || supabaseKey);
+// Force uncached reads: Next/Vercel caches fetch() (incl. supabase-js) durably,
+// which made the dashboard show stale counts. no-store keeps every page live.
+const noStoreFetch: typeof fetch = (input, init) => fetch(input as any, { ...init, cache: 'no-store' });
+export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey || supabaseKey, {
+  auth: { persistSession: false },
+  global: { fetch: noStoreFetch },
+});
 
 export type Lead = {
   id: number;
