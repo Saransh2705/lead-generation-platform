@@ -24,7 +24,9 @@ const statusBadge: Record<string, string> = { new: 'badge-blue', contacted: 'bad
 const SOCIAL_ICON: Record<string, string> = { linkedin: 'in', facebook: 'f', instagram: 'ig', twitter: 'x', github: 'gh', youtube: 'yt', tiktok: 'tk', whatsapp: 'wa', telegram: 'tg', pinterest: 'pin', yelp: 'yelp', reddit: 'rd', threads: 'th' };
 
 const ALL_COLS = [
+  { key: 'logo', header: 'Logo' },
   { key: 'name', header: 'Name' },
+  { key: 'description', header: 'Description' },
   { key: 'contacts', header: 'Contacts' },
   { key: 'confidence', header: 'Confidence' },
   { key: 'verify', header: 'Verified' },
@@ -44,7 +46,7 @@ const ALL_COLS = [
   { key: 'status', header: 'Status' },
   { key: 'created_at', header: 'Fetched' },
 ];
-const DEFAULT_COLS = ['name', 'contacts', 'confidence', 'socials', 'location', 'country', 'category', 'created_at'];
+const DEFAULT_COLS = ['logo', 'name', 'description', 'contacts', 'confidence', 'country', 'category', 'created_at'];
 
 function label(v: string) { return (v || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()); }
 function presetCutoff(preset: string): string | null {
@@ -116,6 +118,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Record
   const exportFields: { key: string; header: string }[] = [];
   for (const key of activeCols) {
     if (key === 'contacts') exportFields.push({ key: 'email', header: 'Email' }, { key: 'phone', header: 'Phone' }, { key: 'website', header: 'Website' });
+    else if (key === 'logo') exportFields.push({ key: 'logo_url', header: 'Logo' });
     else if (key === 'category') exportFields.push({ key: 'category_label', header: 'Category' });
     else if (key === 'socials' || key === 'verify') continue;
     else if (key === 'confidence') exportFields.push({ key: 'confidence_effective', header: 'Confidence' });
@@ -155,7 +158,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Record
                   {rows.map((l) => (
                     <tr key={l.id}>
                       {activeCols.map((k) => {
+                        if (k === 'logo') return <td key={k}>{l.logo_url ? <img src={l.logo_url} alt="" referrerPolicy="no-referrer" style={{ width: 32, height: 32, borderRadius: 7, objectFit: 'contain', background: '#fff', border: '1px solid var(--border)' }} /> : <span className="cell-muted">—</span>}</td>;
                         if (k === 'name') return <td key={k} className="cell-strong">{l.name || '—'}</td>;
+                        if (k === 'description') return <td key={k} className="cell-muted" style={{ maxWidth: 340 }}><span title={l.description || ''} style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{l.description || '—'}</span></td>;
                         if (k === 'contacts') return (
                           <td key={k}>
                             {l.email && <span style={chip}>✉ {l.email}</span>}

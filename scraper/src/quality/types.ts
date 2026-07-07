@@ -19,6 +19,8 @@ export type RawCandidate = {
   source_key: string;         // discovery source that produced this
   source_url?: string | null;
   socials?: Record<string, string>;  // { linkedin, facebook, instagram, twitter, github, ... }
+  logo_url?: string | null;   // company logo, if the site exposes one
+  description?: string | null; // heavy company detail, if available
   raw?: unknown;
 };
 
@@ -44,6 +46,8 @@ export type UpsertPayload = {
   source_key: string;
   source_url: string | null;
   brief?: string | null;
+  logo_url: string | null;
+  description: string | null;
   status: string;
   mode: 'scraped';
   scrape_env: 'cloud' | 'home' | 'manual';

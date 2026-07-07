@@ -50,10 +50,35 @@ function pickEmail(emails: string[], domain: string | null): string | null {
   return roleAny || clean[0];
 }
 
+// Pull a company logo + heavy description from a page's metadata (JSON-LD →
+// OpenGraph → meta), resolving relative URLs. Only what the site actually exposes.
+async function extractMeta(page: import('playwright').Page): Promise<{ logo: string | null; desc: string | null }> {
+  return page.evaluate(() => {
+    const abs = (u: string | null | undefined) => { if (!u) return null; try { return new URL(u, location.href).href; } catch { return null; } };
+    const attr = (sel: string, a: string) => document.querySelector(sel)?.getAttribute(a) || null;
+    let logo: string | null = null, desc: string | null = null;
+    for (const s of Array.from(document.querySelectorAll('script[type="application/ld+json"]'))) {
+      try {
+        const data = JSON.parse(s.textContent || '');
+        const arr = Array.isArray(data) ? data : (data['@graph'] || [data]);
+        for (const o of arr) {
+          if (!o || typeof o !== 'object') continue;
+          if (!logo && o.logo) logo = typeof o.logo === 'string' ? o.logo : o.logo?.url;
+          if ((!desc || desc.length < 80) && typeof o.description === 'string') desc = o.description;
+        }
+      } catch { /* bad ld+json */ }
+    }
+    if (!logo) { const img = document.querySelector('img[class*="logo" i],img[alt*="logo" i],img[id*="logo" i],header img') as HTMLImageElement | null; if (img) logo = img.getAttribute('src'); }
+    if (!logo) logo = attr('link[rel~="apple-touch-icon"]', 'href') || attr('meta[property="og:image"]', 'content') || attr('link[rel~="icon"]', 'href');
+    if (!desc) desc = attr('meta[property="og:description"]', 'content') || attr('meta[name="description"]', 'content');
+    return { logo: abs(logo), desc: desc ? desc.replace(/\s+/g, ' ').trim().slice(0, 800) : null };
+  }).catch(() => ({ logo: null, desc: null }));
+}
+
 export async function enrichFromWebsite(
   ctx: BrowserContext,
   website: string
-): Promise<{ email: string | null; phone: string | null; socials: Record<string, string> }> {
+): Promise<{ email: string | null; phone: string | null; socials: Record<string, string>; logo: string | null; description: string | null }> {
   const domain = websiteDomain(website);
   let base = website.trim();
   if (!/^https?:\/\//i.test(base)) base = 'https://' + base;
@@ -63,6 +88,8 @@ export async function enrichFromWebsite(
   const page = await ctx.newPage();
   let email: string | null = null;
   let phone: string | null = null;
+  let logo: string | null = null;
+  let description: string | null = null;
   const emailPool: string[] = [];
   const socials: Record<string, string> = {};
   try {
@@ -101,11 +128,16 @@ export async function enrichFromWebsite(
       email = pickEmail(emailPool, domain);
       if (!phone && tels.length) phone = tels[0];
 
+      // Logo (first found) + description (keep the longest/heaviest across pages).
+      const meta = await extractMeta(page);
+      if (!logo && meta.logo) logo = meta.logo;
+      if (meta.desc && meta.desc.length > (description?.length || 0)) description = meta.desc;
+
       // Keep visiting the remaining paths to gather more socials / a better email.
       await pace(500, 1200);
     }
   } finally {
     await page.close().catch(() => {});
   }
-  return { email, phone, socials };
+  return { email, phone, socials, logo, description };
 }

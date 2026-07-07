@@ -68,12 +68,15 @@ export async function scrapeItem(
 
   let enriched = 0;
   for (const c of seed.candidates) {
-    if (c.website && !c.email) {
+    // Visit the site if it can still add value (email, logo, or a heavy description).
+    if (c.website && (!c.email || !c.logo_url || !c.description)) {
       try {
         const e = await enrichFromWebsite(ctx, c.website);
         if (e.email) { c.email = e.email; enriched++; }
         if (!c.phone && e.phone) c.phone = e.phone;
         c.socials = { ...e.socials, ...(c.socials || {}) };
+        if (e.logo && !c.logo_url) c.logo_url = e.logo;
+        if (e.description && !c.description) c.description = e.description;
       } catch { /* one bad site never fails the batch */ }
       await pace(1500, 4000);
     }

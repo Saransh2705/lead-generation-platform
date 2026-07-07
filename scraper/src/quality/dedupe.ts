@@ -67,6 +67,8 @@ export async function toUpsertPayload(
     source_key: c.source_key,
     source_url: c.source_url ?? null,
     brief: null,
+    logo_url: c.logo_url ?? null,
+    description: c.description ?? null,
     status: 'new',
     mode: 'scraped',
     scrape_env: opts.scrape_env,
