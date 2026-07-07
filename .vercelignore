@@ -1,0 +1,4 @@
+# The scraper is a separate Node/Playwright workspace run by GitHub Actions,
+# not part of the Next.js app. Keep it out of the Vercel build.
+scraper
+supabase/functions
