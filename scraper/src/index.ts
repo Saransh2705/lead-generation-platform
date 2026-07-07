@@ -47,7 +47,7 @@ async function main() {
 
   const hb = setInterval(() => heartbeat(job.id).catch(() => {}), 25000);
   const sourceStats: Record<string, any> = {};
-  let found = 0, ins = 0, upd = 0, blocked = 0;
+  let found = 0, ins = 0, upd = 0, blocked = 0, lastError: string | null = null;
 
   const ctx = await launchBrowser();
   try {
@@ -55,14 +55,15 @@ async function main() {
       if (!owns) { console.log('Lost ownership (reaped) — aborting.'); break; }
       const r = await scrapeItem(ctx, item, 'cloud', job.id);
       found += r.found;
-      sourceStats[r.source_key] = { found: r.found, enriched: r.enriched, status: r.status };
-      await updateSourceHealth(r.source_key, r.status, r.found, r.status === 'ok' ? undefined : r.status).catch(() => {});
+      sourceStats[r.source_key] = { found: r.found, enriched: r.enriched, status: r.status, error: r.error };
+      await updateSourceHealth(r.source_key, r.status, r.found, r.error).catch(() => {});
       if (r.status === 'blocked') blocked++;
+      if (r.error) lastError = r.error;
       await attachBriefs(r.payloads, { key: item.category, label: item.category });
       for (const p of r.payloads) {
         try { const u = await upsertLead(p); u.was_insert ? ins++ : upd++; } catch (e: any) { console.log('upsert failed:', e.message); }
       }
-      console.log(`  ${item.source_key} (${item.geo}): ${r.status}, found=${r.found}, enriched=${r.enriched}`);
+      console.log(`  ${item.source_key} (${item.geo}): ${r.status}, found=${r.found}, enriched=${r.enriched}${r.error ? ' — ' + r.error : ''}`);
     }
   } finally {
     await ctx.close().catch(() => {});
@@ -72,8 +73,8 @@ async function main() {
   const status = !owns ? 'stuck' : found === 0 && blocked > 0 ? 'blocked' : 'completed';
   await db().query(
     `UPDATE public.scrape_jobs SET status=$2, found_count=$3, inserted_count=$4, updated_count=$5, blocked_count=$6,
-       source_stats=$7::jsonb, gh_run_url=COALESCE($8, gh_run_url), finished_at=now(), updated_at=now() WHERE id=$1`,
-    [job.id, status, found, ins, upd, blocked, JSON.stringify(sourceStats), GH_RUN_URL]
+       source_stats=$7::jsonb, error=$9, gh_run_url=COALESCE($8, gh_run_url), finished_at=now(), updated_at=now() WHERE id=$1`,
+    [job.id, status, found, ins, upd, blocked, JSON.stringify(sourceStats), GH_RUN_URL, ins === 0 ? lastError : null]
   );
   console.log(`Job ${job.id} ${status}: found=${found} inserted=${ins} merged=${upd} blocked=${blocked}`);
 }

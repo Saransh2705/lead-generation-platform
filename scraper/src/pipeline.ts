@@ -9,7 +9,7 @@ import { pace } from './core/pacing';
 import type { UpsertPayload } from './quality/types';
 
 export type WorkItem = { category: string; source_key: string; geo?: string | null; count?: number };
-export type ItemResult = { source_key: string; status: 'ok' | 'empty' | 'blocked' | 'error'; found: number; enriched: number; payloads: UpsertPayload[] };
+export type ItemResult = { source_key: string; status: 'ok' | 'empty' | 'blocked' | 'error'; found: number; enriched: number; payloads: UpsertPayload[]; error?: string };
 
 export async function scrapeItem(
   ctx: BrowserContext,
@@ -23,14 +23,14 @@ export async function scrapeItem(
 
   // Only OpenStreetMap discovery is implemented so far (website_enrich is a step,
   // google_maps/yellowpages come in Phase 6).
-  if (item.source_key !== 'osm_overpass') return { ...base, status: 'error' };
-  if (!geo) return { ...base, status: 'error' };
+  if (item.source_key !== 'osm_overpass') return { ...base, status: 'error', error: 'source not implemented' };
+  if (!geo) return { ...base, status: 'error', error: 'no geo' };
 
   const loc = await geocode(geo);
-  if (!loc) return { ...base, status: 'error' };
+  if (!loc) return { ...base, status: 'error', error: 'geocode failed (nominatim blocked/timeout?)' };
 
   const seed = await overpassSearch({ category: item.category, lat: loc.lat, lng: loc.lng, geo, limit });
-  if (seed.status !== 'ok') return { ...base, status: seed.status, found: seed.candidates.length };
+  if (seed.status !== 'ok') return { ...base, status: seed.status, found: seed.candidates.length, error: seed.error };
 
   let enriched = 0;
   for (const c of seed.candidates) {

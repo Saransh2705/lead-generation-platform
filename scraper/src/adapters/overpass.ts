@@ -39,13 +39,21 @@ out center ${Math.min(limit * 3, 200)};`;
     let els: any[] | null = null;
     let lastErr = 'overpass unavailable';
     for (let attempt = 0; attempt < ENDPOINTS.length && els === null; attempt++) {
-      const res = await fetch(ENDPOINTS[attempt], { method: 'POST', headers, body: 'data=' + encodeURIComponent(q) });
-      if (res.status === 429 || res.status === 504) { lastErr = `overpass ${res.status}`; await sleep(3000); continue; }
-      if (!res.ok) { lastErr = `overpass ${res.status}`; continue; }
-      const data = (await res.json()) as { elements?: any[] };
-      els = data.elements || [];
+      const ac = new AbortController();
+      const to = setTimeout(() => ac.abort(), 20000); // hard 20s per endpoint — never hang
+      try {
+        const res = await fetch(ENDPOINTS[attempt], { method: 'POST', headers, body: 'data=' + encodeURIComponent(q), signal: ac.signal });
+        if (res.status === 429 || res.status === 504) { lastErr = `overpass ${res.status}`; await sleep(2000); continue; }
+        if (!res.ok) { lastErr = `overpass ${res.status}`; continue; }
+        const data = (await res.json()) as { elements?: any[] };
+        els = data.elements || [];
+      } catch (e: any) {
+        lastErr = e?.name === 'AbortError' ? 'overpass timeout' : (e?.message || 'overpass fetch error');
+      } finally {
+        clearTimeout(to);
+      }
     }
-    if (els === null) return { candidates: [], status: lastErr.includes('429') || lastErr.includes('504') ? 'blocked' : 'error', error: lastErr };
+    if (els === null) return { candidates: [], status: /429|504|timeout/.test(lastErr) ? 'blocked' : 'error', error: lastErr };
     const seen = new Set<string>();
     const candidates: RawCandidate[] = [];
     for (const el of els) {
