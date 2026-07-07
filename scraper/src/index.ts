@@ -53,17 +53,26 @@ async function main() {
   try {
     for (const item of items) {
       if (!owns) { console.log('Lost ownership (reaped) — aborting.'); break; }
-      const r = await scrapeItem(ctx, item, 'cloud', job.id);
-      found += r.found;
-      sourceStats[r.source_key] = { found: r.found, enriched: r.enriched, status: r.status, error: r.error };
-      await updateSourceHealth(r.source_key, r.status, r.found, r.error).catch(() => {});
-      if (r.status === 'blocked') blocked++;
-      if (r.error) lastError = r.error;
-      await attachBriefs(r.payloads, { key: item.category, label: item.category });
-      for (const p of r.payloads) {
-        try { const u = await upsertLead(p); u.was_insert ? ins++ : upd++; } catch (e: any) { console.log('upsert failed:', e.message); }
+      try {
+        const r = await scrapeItem(ctx, item, 'cloud', job.id);
+        found += r.found;
+        const prev = sourceStats[r.source_key] || { found: 0, enriched: 0 };
+        sourceStats[r.source_key] = { found: prev.found + r.found, enriched: prev.enriched + r.enriched, status: r.status, error: r.error };
+        await updateSourceHealth(r.source_key, r.status, r.found, r.error).catch(() => {});
+        if (r.status === 'blocked') blocked++;
+        if (r.error) lastError = r.error;
+        await attachBriefs(r.payloads, { key: item.category, label: item.category });
+        for (const p of r.payloads) {
+          try { const u = await upsertLead(p); u.was_insert ? ins++ : upd++; } catch (e: any) { console.log('upsert failed:', e.message); }
+        }
+        console.log(`  ${item.source_key} (${item.geo}): ${r.status}, found=${r.found}, enriched=${r.enriched}${r.error ? ' — ' + r.error : ''}`);
+      } catch (e: any) {
+        // Isolate: one source crashing must not stop the others.
+        lastError = e?.message || 'source crashed';
+        sourceStats[item.source_key] = { found: 0, enriched: 0, status: 'error', error: lastError };
+        await updateSourceHealth(item.source_key, 'error', 0, lastError).catch(() => {});
+        console.log(`  ${item.source_key} (${item.geo}): CRASHED — ${lastError}`);
       }
-      console.log(`  ${item.source_key} (${item.geo}): ${r.status}, found=${r.found}, enriched=${r.enriched}${r.error ? ' — ' + r.error : ''}`);
     }
   } finally {
     await ctx.close().catch(() => {});

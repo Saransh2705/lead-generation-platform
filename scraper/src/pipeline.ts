@@ -3,6 +3,9 @@
 import type { BrowserContext } from 'playwright';
 import { geocode } from './core/geocode';
 import { overpassSearch } from './adapters/overpass';
+import { yellowPagesSearch, type SourceResult } from './adapters/yellowPages';
+import { yelpSearch } from './adapters/yelp';
+import { googleMapsSearch } from './adapters/googleMaps';
 import { enrichFromWebsite } from './adapters/websiteEnrich';
 import { toUpsertPayload } from './quality/dedupe';
 import { pace } from './core/pacing';
@@ -34,23 +37,33 @@ export async function scrapeItem(
   const limit = Math.max(1, Math.min(50, item.count || 12));
   const base = { source_key: item.source_key, found: 0, enriched: 0, payloads: [] as UpsertPayload[] };
 
-  // Only OpenStreetMap discovery is implemented so far (website_enrich is a step,
-  // google_maps/yellowpages come in Phase 6).
-  if (item.source_key !== 'osm_overpass') return { ...base, status: 'error', error: 'source not implemented' };
-
-  // Prefer the category's pre-geocoded coords (Nominatim blocks datacenter IPs).
-  let lat = item.lat ?? null, lng = item.lng ?? null;
-  if ((lat == null || lng == null) && geo) {
-    const loc = await geocode(geo);
-    if (loc) { lat = loc.lat; lng = loc.lng; }
+  // Dispatch to the source's adapter. Each is independent; the worker isolates
+  // per item, so one blocked source never stops the others.
+  const src = item.source_key;
+  const sopts = {
+    category: item.category, searchTerms: item.search_terms, geo,
+    country: item.country, state: item.state, city: item.city, limit,
+    lat: item.lat ?? null, lng: item.lng ?? null,
+  };
+  let seed: SourceResult;
+  if (src === 'osm_overpass') {
+    let lat = item.lat ?? null, lng = item.lng ?? null;
+    if ((lat == null || lng == null) && geo) { const loc = await geocode(geo); if (loc) { lat = loc.lat; lng = loc.lng; } }
+    if (lat == null || lng == null) return { ...base, status: 'error', error: 'no coordinates (category not geocoded)' };
+    seed = await overpassSearch({
+      category: item.category, lat, lng, geo, limit,
+      radiusM: item.radius_m ?? undefined, searchTerms: item.search_terms, osmFilter: item.osm_filter,
+      country: item.country, state: item.state, city: item.city,
+    });
+  } else if (src === 'yellowpages') {
+    seed = await yellowPagesSearch(ctx, sopts);
+  } else if (src === 'yelp') {
+    seed = await yelpSearch(ctx, sopts);
+  } else if (src === 'google_maps') {
+    seed = await googleMapsSearch(ctx, sopts);
+  } else {
+    return { ...base, status: 'error', error: 'source not implemented' };
   }
-  if (lat == null || lng == null) return { ...base, status: 'error', error: 'no coordinates (category not geocoded)' };
-
-  const seed = await overpassSearch({
-    category: item.category, lat, lng, geo, limit,
-    radiusM: item.radius_m ?? undefined, searchTerms: item.search_terms, osmFilter: item.osm_filter,
-    country: item.country, state: item.state, city: item.city,
-  });
   if (seed.status !== 'ok') return { ...base, status: seed.status, found: seed.candidates.length, error: seed.error };
 
   let enriched = 0;

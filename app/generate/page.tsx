@@ -14,6 +14,7 @@ function timeAgo(iso: string) {
 
 function fields(fd: FormData) {
   const radius = parseInt(String(fd.get('radius_m') || '')) || 6000;
+  const source_keys = fd.getAll('source_keys').map(String).filter(Boolean);
   return {
     label: String(fd.get('label') || '').trim(),
     icon: String(fd.get('icon') || '').trim() || '📋',
@@ -25,6 +26,8 @@ function fields(fd: FormData) {
     city: String(fd.get('city') || '').trim() || null,
     lat: num(fd.get('lat')), lng: num(fd.get('lng')),
     radius_m: radius,
+    source_keys: source_keys.length ? source_keys : ['osm_overpass'],
+    source_key: source_keys[0] || 'osm_overpass',
     lead_count: parseInt(String(fd.get('lead_count') || '12')) || 12,
   };
 }
@@ -56,6 +59,8 @@ async function deleteCategory(formData: FormData) {
 export default async function GeneratePage() {
   const { data: categories } = await supabaseAdmin.from('categories').select('*').order('created_at', { ascending: false });
   const cats = categories || [];
+  const { data: srcData } = await supabaseAdmin.from('sources').select('key,label,icon,kind,enabled').eq('enabled', true).in('kind', ['osm', 'directory', 'maps']).order('label');
+  const sources = (srcData || []).map((s: any) => ({ key: s.key, label: s.label, icon: s.icon }));
   // Lead count + last-lead time per category (cheap client-side aggregate).
   let leadRows: any[] = [];
   try { leadRows = (await supabaseAdmin.from('leads').select('category,created_at').limit(5000)).data || []; } catch {}
@@ -79,7 +84,7 @@ export default async function GeneratePage() {
         </div>
       </div>
       <div className="content">
-        <CategoryManager categories={enriched} createAction={createCategory} updateAction={updateCategory} deleteAction={deleteCategory} />
+        <CategoryManager categories={enriched} sources={sources} createAction={createCategory} updateAction={updateCategory} deleteAction={deleteCategory} />
       </div>
     </>
   );

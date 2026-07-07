@@ -32,7 +32,7 @@ export async function geoCachePut(query: string, lat: number, lng: number) {
   );
 }
 
-export async function updateSourceHealth(key: string, status: 'ok' | 'blocked' | 'empty' | 'error', yield_: number, error?: string) {
+export async function updateSourceHealth(key: string, status: 'ok' | 'blocked' | 'empty' | 'error', yield_: number, error?: string | null) {
   await db().query(
     `UPDATE public.sources SET last_status=$2, last_run_at=now(), last_yield=$3, last_error=$4,
        last_success_at = CASE WHEN $2='ok' THEN now() ELSE last_success_at END,

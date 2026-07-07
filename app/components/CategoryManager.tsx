@@ -6,8 +6,9 @@ import RunButton from './RunButton';
 
 type Cat = { key: string; label: string; icon?: string; search_terms?: string; osm_filter?: string; geo?: string; country?: string; lat?: number; lng?: number; lead_count?: number; leadCount?: number; lastRun?: string | null };
 
-export default function CategoryManager({ categories, createAction, updateAction, deleteAction }: {
+export default function CategoryManager({ categories, sources, createAction, updateAction, deleteAction }: {
   categories: Cat[];
+  sources: { key: string; label: string; icon?: string }[];
   createAction: (fd: FormData) => Promise<void>;
   updateAction: (fd: FormData) => Promise<void>;
   deleteAction: (fd: FormData) => Promise<void>;
@@ -30,7 +31,7 @@ export default function CategoryManager({ categories, createAction, updateAction
           </div>
           <button type="button" className="btn-ghost btn-sm" onClick={() => setShowCreate((v) => !v)}>{showCreate ? 'Hide' : '＋ New category'}</button>
         </div>
-        {showCreate && <CategoryForm action={createAction} onSubmitted={() => setShowCreate(false)} />}
+        {showCreate && <CategoryForm action={createAction} sources={sources} onSubmitted={() => setShowCreate(false)} />}
       </div>
 
       <div style={{ marginBottom: 16 }}>
@@ -48,7 +49,7 @@ export default function CategoryManager({ categories, createAction, updateAction
             {editing === c.key ? (
               <>
                 <div className="card-title" style={{ marginBottom: 10 }}>Edit category</div>
-                <CategoryForm action={updateAction} initial={c} compact onSubmitted={() => setEditing(null)} />
+                <CategoryForm action={updateAction} initial={c} sources={sources} compact onSubmitted={() => setEditing(null)} />
                 <button type="button" className="btn-ghost btn-sm" style={{ marginTop: 8, width: '100%' }} onClick={() => setEditing(null)}>Cancel</button>
               </>
             ) : (
