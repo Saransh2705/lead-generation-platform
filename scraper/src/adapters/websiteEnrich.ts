@@ -53,9 +53,9 @@ function pickEmail(emails: string[], domain: string | null): string | null {
 // Pull a company logo + heavy description from a page's metadata (JSON-LD →
 // OpenGraph → meta), resolving relative URLs. Only what the site actually exposes.
 async function extractMeta(page: import('playwright').Page): Promise<{ logo: string | null; desc: string | null }> {
+  // NOTE: no named helper functions inside evaluate() — esbuild/tsx would inject a
+  // __name() call that doesn't exist in the browser and throw. Keep it all inline.
   return page.evaluate(() => {
-    const abs = (u: string | null | undefined) => { if (!u) return null; try { return new URL(u, location.href).href; } catch { return null; } };
-    const attr = (sel: string, a: string) => document.querySelector(sel)?.getAttribute(a) || null;
     let logo: string | null = null, desc: string | null = null;
     for (const s of Array.from(document.querySelectorAll('script[type="application/ld+json"]'))) {
       try {
@@ -63,15 +63,17 @@ async function extractMeta(page: import('playwright').Page): Promise<{ logo: str
         const arr = Array.isArray(data) ? data : (data['@graph'] || [data]);
         for (const o of arr) {
           if (!o || typeof o !== 'object') continue;
-          if (!logo && o.logo) logo = typeof o.logo === 'string' ? o.logo : o.logo?.url;
+          if (!logo && o.logo) logo = typeof o.logo === 'string' ? o.logo : (o.logo && o.logo.url);
           if ((!desc || desc.length < 80) && typeof o.description === 'string') desc = o.description;
         }
-      } catch { /* bad ld+json */ }
+      } catch (e) { /* bad ld+json */ }
     }
-    if (!logo) { const img = document.querySelector('img[class*="logo" i],img[alt*="logo" i],img[id*="logo" i],header img') as HTMLImageElement | null; if (img) logo = img.getAttribute('src'); }
-    if (!logo) logo = attr('link[rel~="apple-touch-icon"]', 'href') || attr('meta[property="og:image"]', 'content') || attr('link[rel~="icon"]', 'href');
-    if (!desc) desc = attr('meta[property="og:description"]', 'content') || attr('meta[name="description"]', 'content');
-    return { logo: abs(logo), desc: desc ? desc.replace(/\s+/g, ' ').trim().slice(0, 800) : null };
+    if (!logo) { const img = document.querySelector('img[class*="logo" i],img[alt*="logo" i],img[id*="logo" i],header img'); if (img) logo = img.getAttribute('src'); }
+    if (!logo) { const el = document.querySelector('link[rel~="apple-touch-icon"]') || document.querySelector('meta[property="og:image"]') || document.querySelector('link[rel~="icon"]'); if (el) logo = el.getAttribute('href') || el.getAttribute('content'); }
+    if (!desc) { const el = document.querySelector('meta[property="og:description"]') || document.querySelector('meta[name="description"]'); if (el) desc = el.getAttribute('content'); }
+    let absLogo: string | null = null;
+    if (logo) { try { absLogo = new URL(logo, location.href).href; } catch (e) { absLogo = null; } }
+    return { logo: absLogo, desc: desc ? desc.replace(/\s+/g, ' ').trim().slice(0, 800) : null };
   }).catch(() => ({ logo: null, desc: null }));
 }
 
