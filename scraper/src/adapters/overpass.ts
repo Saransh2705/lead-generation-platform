@@ -4,9 +4,13 @@
 import type { RawCandidate } from '../quality/types';
 
 // Rotate across public Overpass mirrors; back off on 429/504.
+// Multiple community mirrors — datacenter IPs (GitHub) get throttled, so we try
+// several with a generous timeout and two passes.
 const ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -38,12 +42,14 @@ out center ${Math.min(limit * 3, 200)};`;
   try {
     let els: any[] | null = null;
     let lastErr = 'overpass unavailable';
-    for (let attempt = 0; attempt < ENDPOINTS.length && els === null; attempt++) {
+    // Two passes over the mirrors; Overpass under load can take 30-50s to respond.
+    const order = [...ENDPOINTS, ...ENDPOINTS];
+    for (let attempt = 0; attempt < order.length && els === null; attempt++) {
       const ac = new AbortController();
-      const to = setTimeout(() => ac.abort(), 20000); // hard 20s per endpoint — never hang
+      const to = setTimeout(() => ac.abort(), 55000); // generous — public instances queue requests
       try {
-        const res = await fetch(ENDPOINTS[attempt], { method: 'POST', headers, body: 'data=' + encodeURIComponent(q), signal: ac.signal });
-        if (res.status === 429 || res.status === 504) { lastErr = `overpass ${res.status}`; await sleep(2000); continue; }
+        const res = await fetch(order[attempt], { method: 'POST', headers, body: 'data=' + encodeURIComponent(q), signal: ac.signal });
+        if (res.status === 429 || res.status === 504) { lastErr = `overpass ${res.status}`; await sleep(3000); continue; }
         if (!res.ok) { lastErr = `overpass ${res.status}`; continue; }
         const data = (await res.json()) as { elements?: any[] };
         els = data.elements || [];
