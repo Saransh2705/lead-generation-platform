@@ -1,0 +1,44 @@
+name: Scrape leads
+
+# Triggered by the Supabase orchestrator (repository_dispatch) or by hand.
+# No schedule: trigger (avoids the 60-day auto-disable); Supabase drives timing.
+on:
+  repository_dispatch:
+    types: [scrape]
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: 'scrape_jobs.id to run (blank = oldest queued cloud batch)'
+        required: false
+
+concurrency:
+  group: scrape-cloud          # one running cloud batch at a time (matches the DB lock)
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20         # stay under the reaper's 25-min stale threshold
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: scraper/package-lock.json
+      - name: Install dependencies
+        working-directory: scraper
+        run: npm ci
+      - name: Install Chromium
+        working-directory: scraper
+        run: npx playwright install --with-deps chromium
+      - name: Run worker
+        working-directory: scraper
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LEADGEN_GMAIL_USER: ${{ secrets.LEADGEN_GMAIL_USER }}
+          LEADGEN_GMAIL_PASS: ${{ secrets.LEADGEN_GMAIL_PASS }}
+          HEADLESS: 'true'
+          JOB_ID: ${{ github.event.client_payload.job_id || github.event.inputs.job_id }}
+        run: npx tsx src/index.ts
