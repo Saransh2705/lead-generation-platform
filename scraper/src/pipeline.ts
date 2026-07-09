@@ -6,6 +6,7 @@ import { overpassSearch } from './adapters/overpass';
 import { yellowPagesSearch, type SourceResult } from './adapters/yellowPages';
 import { yelpSearch } from './adapters/yelp';
 import { googleMapsSearch } from './adapters/googleMaps';
+import { searchDiscovery } from './adapters/searchDiscovery';
 import { enrichFromWebsite } from './adapters/websiteEnrich';
 import { toUpsertPayload } from './quality/dedupe';
 import { pace } from './core/pacing';
@@ -61,6 +62,8 @@ export async function scrapeItem(
     seed = await yelpSearch(ctx, sopts);
   } else if (src === 'google_maps') {
     seed = await googleMapsSearch(ctx, sopts);
+  } else if (src === 'web_search') {
+    seed = await searchDiscovery(sopts); // plain fetch, no browser needed for the search
   } else {
     return { ...base, status: 'error', error: 'source not implemented' };
   }

@@ -64,7 +64,7 @@ export default async function GeneratePage({ searchParams }: { searchParams: Rec
     .order('created_at', { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   const cats = catRes.data || [];
   const totalCats = catRes.count || 0;
-  const { data: srcData } = await supabaseAdmin.from('sources').select('key,label,icon,kind,enabled').eq('enabled', true).in('kind', ['osm', 'directory', 'maps']).order('label');
+  const { data: srcData } = await supabaseAdmin.from('sources').select('key,label,icon,kind,enabled').eq('enabled', true).in('kind', ['osm', 'directory', 'maps', 'search']).order('label');
   const sources = (srcData || []).map((s: any) => ({ key: s.key, label: s.label, icon: s.icon }));
   // Lead count + last-lead time per category (cheap client-side aggregate).
   let leadRows: any[] = [];

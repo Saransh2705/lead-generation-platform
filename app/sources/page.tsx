@@ -14,7 +14,7 @@ const STATUS: Record<string, { b: string; t: string }> = {
   empty: { b: 'badge-amber', t: 'No results' },
   error: { b: 'badge-red', t: '⚠ Error' },
 };
-const KIND: Record<string, string> = { osm: 'Open data', directory: 'Directory', maps: 'Maps', enrich: 'Enrichment', sample: 'Demo' };
+const KIND: Record<string, string> = { osm: 'Open data', directory: 'Directory', maps: 'Maps', enrich: 'Enrichment', sample: 'Demo', search: 'Web search' };
 
 export default async function SourcesPage() {
   let sources: any[] = [];
